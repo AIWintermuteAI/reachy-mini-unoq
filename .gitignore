@@ -1,0 +1,17 @@
+# Build inputs the Dockerfile fetches + sha256-verifies itself (see .dockerignore).
+# 24 MB of binary blobs — never in git.
+vendor/
+
+# App Lab runtime state: generated compose, per-app venvs, logs. Regenerated on import/start.
+app/.cache/
+
+# Python artifacts
+__pycache__/
+*.pyc
+
+# Packaged app artifact — built from app/, not committed (rebuildable via README).
+app-lab.zip
+
+# Logs / docs artifacts
+*.log
+*.html

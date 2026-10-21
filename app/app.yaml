@@ -1,0 +1,14 @@
+name: Reachy Mini on UNO Q
+description: Runs the Reachy Mini daemon on the UNO Q and drives a USB-connected Reachy Mini Lite.
+ports: []
+bricks:
+- reachy_daemon:
+    variables:
+      PULSE_DIR: /run/user/1000
+      REACHY_ADVERTISED_IP: 192.168.0.177
+      REACHY_IMAGE: ghcr.io/aiwintermuteai/reachy-mini-unoq/reachy-mini-unoq:0.7
+      REACHY_NO_MEDIA: "0"
+      REACHY_SERIAL_DEV: /dev/ttyACM0
+      REACHY_SIM: "0"
+      REACHY_WAKE: "1"
+icon: 🤖

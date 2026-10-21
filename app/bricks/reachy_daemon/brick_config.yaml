@@ -1,0 +1,55 @@
+id: reachy_daemon
+name: Reachy Mini Daemon
+description: >-
+  Runs the Reachy Mini daemon (FastAPI + GStreamer) for a USB-connected Reachy Mini Lite
+  with host networking for WebRTC media transport.
+
+# The daemon is a long-running service, so it must live in a container (brick_compose.yaml)
+# rather than in the app's own Python process.
+require_container: true
+
+# The Lite presents its camera (UVC) and audio (UAC) as standard device classes, so let the
+# orchestrator resolve and mount them instead of hard-coding /dev/videoN or /dev/snd.
+required_devices:
+  - camera
+  - microphone
+  - speaker
+mount_devices_into_container: true
+
+# NOTE: no ports declared. The daemon runs with network_mode: host and binds 8000/8443
+# on the board directly; declaring them here makes App Lab publish them for the MAIN
+# app container too, which fails with "address already in use" (8443) and breaks app start.
+variables:
+  - name: REACHY_IMAGE
+    description: Container image holding the reachy-mini daemon
+    # Replace with the registry you push to; App Lab cannot pull private images.
+    default_value: ghcr.io/aiwintermuteai/reachy-mini-unoq/reachy-mini-unoq:0.7
+
+  - name: REACHY_ADVERTISED_IP
+    description: Optional override for the board's automatically detected WLAN address
+    default_value: "192.168.0.177"
+
+  - name: REACHY_SERIAL_DEV
+    description: USB serial device for the motor bus (Lite is VID:PID 1a86:55d3)
+    # The robot's CH34x bridge enumerates as CDC-ACM on Linux, hence ttyACM0 -- NOT ttyUSB0.
+    default_value: /dev/ttyACM0
+
+  - name: REACHY_WAKE
+    description: >-
+      Set to 0 to connect without moving the robot (bring-up / diagnostics).
+    default_value: "1"
+
+  - name: REACHY_SIM
+    description: >-
+      Run without a robot: "mockup" (no physics) or "mujoco". Empty = real hardware.
+    default_value: "0"
+
+  - name: REACHY_NO_MEDIA
+    description: Set to 1 to skip camera/microphone capture (lower CPU)
+    default_value: "0"
+
+  - name: PULSE_DIR
+    description: >-
+      Host runtime dir holding the PipeWire/PulseAudio socket used for the robot's microphone.
+      Defaults to /run/user/<uid> for the board's default user.
+    default_value: /run/user/1000

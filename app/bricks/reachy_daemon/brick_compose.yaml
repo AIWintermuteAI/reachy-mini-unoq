@@ -1,0 +1,68 @@
+# Brick services for the Reachy Mini daemon.
+#
+# Host networking is required for WebRTC's negotiated UDP media sockets. The app container
+# reaches the daemon API through the Docker bridge gateway if the service hostname is unavailable.
+services:
+  reachy-mini-daemon:
+    network_mode: host
+    image: "${REACHY_IMAGE:-ghcr.io/aiwintermuteai/reachy-mini-unoq/reachy-mini-unoq:0.7}"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "2"
+
+    environment:
+      # Small-board hygiene taken from the official image's launcher.sh: without this, glibc
+      # spawns one malloc arena per core and RSS creeps up over long runs.
+      MALLOC_ARENA_MAX: "2"
+      REACHY_SERIAL_PORT: "${REACHY_SERIAL_DEV:-/dev/ttyACM0}"
+      REACHY_SIM: "${REACHY_SIM:-}"
+      REACHY_NO_MEDIA: "${REACHY_NO_MEDIA:-0}"
+      REACHY_WAKE: "${REACHY_WAKE:-1}"
+      REACHY_ADVERTISED_IP: "${REACHY_ADVERTISED_IP:-}"
+      REACHY_HOST: "0.0.0.0"
+      REACHY_PORT: "8000"
+      # The robot's microphone is only enumerable through PulseAudio/PipeWire. The board's ALSA
+      # provider lists "Reachy Mini Audio" as a sink but never as a source, so without this the
+      # daemon warns "No Reachy Mini Audio Source card found" and falls back to a broken default.
+      PULSE_SERVER: "unix:${PULSE_DIR:-/run/user/1000}/pulse/native"
+
+    volumes:
+      # REQUIRED for the camera. GStreamer's v4l2 device provider enumerates through udev, and a
+      # container has no udev database of its own -- without this the daemon logs "No camera found"
+      # and serves no video, even though /dev/video0 is mounted and works.
+      - /run/udev:/run/udev:ro
+      # REQUIRED for the microphone: the host's PipeWire/PulseAudio socket. Mounted read-write
+      # because connecting to a unix socket needs write permission on it. This is the same
+      # arrangement the official Reachy Mini image uses (pipewire-audio + gstreamer1.0-pipewire).
+      # PULSE_DIR assumes the board's default user (uid 1000); change it if yours differs.
+      - ${PULSE_DIR:-/run/user/1000}:/run/user/1000
+
+    # The camera (UVC) and audio (UAC) arrive as the generic device classes declared in
+    # brick_config.yaml and are mounted by the orchestrator. The motor bus is a plain USB
+    # serial device, which has no device class, so it is mounted explicitly here.
+    # Hardware-free smoke test: REACHY_SIM=mockup and REACHY_SERIAL_DEV=/dev/null.
+    devices:
+      - "${REACHY_SERIAL_DEV:-/dev/ttyACM0}"
+
+    # Groups that own /dev/ttyUSB*, /dev/video* and /dev/snd on the UNO Q.
+    group_add:
+      - dialout
+      - video
+      - audio
+
+    # First start is slow: media pipeline, ONNX models and motion assets are loaded up front,
+    # hence the generous start_period.
+    healthcheck:
+      test:
+        - "CMD-SHELL"
+        - >-
+          python -c "import urllib.request,sys;
+          sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/daemon/status', timeout=3).status == 200 else 1)"
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 90s
+
+    restart: unless-stopped

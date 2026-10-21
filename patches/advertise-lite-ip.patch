@@ -1,0 +1,14 @@
+--- a/reachy_mini/daemon/daemon.py
++++ b/reachy_mini/daemon/daemon.py
+@@ -10,3 +10,4 @@
+ import json
+ import logging
++import os
+ import time
+@@ -366,4 +367,4 @@
+         # The wireless version binds all interfaces and advertises its LAN
+         # address; loopback-only configurations have no meaningful wlan_ip.
+-        if self.wireless_version:
+-            self._status.wlan_ip = get_ip_address()
++        advertised_ip = os.getenv("REACHY_ADVERTISED_IP")
++        self._status.wlan_ip = advertised_ip or get_ip_address()

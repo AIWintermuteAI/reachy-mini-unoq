@@ -1,0 +1,11 @@
+.git
+*.log
+*.md
+old/
+
+# Local copy of the gst-plugins-rs overlay used for manual testing; the Dockerfile downloads
+# and sha256-verifies it itself, so it must not bloat the build context.
+vendor/
+
+# Handoff/documentation artifacts -- never needed in the build context.
+*.html
